@@ -55,7 +55,9 @@ def get(filename, variable='ta'):
                 # Create the station ID by concatenating the block number and the station number
                 id = keyvalues['WMO BLOCK NUMBER'] * 1000 + keyvalues['WMO STATION NUMBER']
                 ids += [id]
-    return ids, lats, lons, values
+
+    #return ids, lats, lons, values
+    return np.array(ids), np.array(lats), np.array(lons), np.array(values)
 
 def get_all_key_values(stuff):
     """ Recursively traverse a dictionary tree to find information. It looks for dictionaries with
@@ -95,6 +97,11 @@ print(len(ids))
 print(len(lats))
 print(len(lons))
 print(len(values))
+values = values - 273.15
+
+
+#lons, lats = np.meshgrid(lons, lats)
+opoints = gridpp.Points(lats, lons)
 
 
 def get_apply_array(laf_array, laf_min, laf_max):
@@ -109,48 +116,55 @@ def get_apply_array(laf_array, laf_min, laf_max):
 file_geo = netCDF4.Dataset('/mnt/c/users/jmnip/met2021/yr_global_grid.nc') #ecmwf_global (1).nc     
 file_global = netCDF4.Dataset('/mnt/c/users/jmnip/met2021/ec_hres_2021111200.nc')
 
-all_vars = file_global.variables[:][60,0,1230:1250,1980:2000]
+temp = file_global.variables['air_temperature_2m'][60,0,: ,:] - 273.15
+laf = file_geo.variables['land_area_fraction'][0,0,: ,: ]
+elev = file_geo.variables['surface_geopotential'][0,0,:,:] / 9.81
 
-temp = file_global.variables['air_temperature_2m'][60,0,1230:1250,1980:2000] - 273.15
-laf = file_geo.variables['land_area_fraction'][0,0,1230:1250,1980:2000]
-elev = file_geo.variables['surface_geopotential'][0,0,1230:1250,1980:2000] / 9.81
+lat = file_global.variables["latitude"]#[1230:1250]
+lon = file_global.variables["longitude"]#[1980:2000]
+lon, lat = np.meshgrid(lon, lat)
 
-lats = file_global.variables["latitude"][1230:1250]
-lons = file_global.variables["longitude"][1980:2000]
-lons, lats = np.meshgrid(lons, lats)
-grid = gridpp.Grid(lats, lons, elevs)
+igrid = gridpp.Grid(lat, lon)
+print(lats.shape)
+
+
 temperature = file_global.variables["air_temperature_2m"][60, 0, 1230:1250, 1980:2000]
 
 print(np.round(laf[:,0:14],2))
 
 file_global.close()
 
+#laf_min = 0
+#laf_max = 0.85
+#apply_array[laf >= laf_min & laf <= laf_max] = 1
+
+#apply_array( laf >= 0 & laf <= 0.85).astype(int)
+
 apply_array = get_apply_array(laf, 0, 0.85)
 
 tFinal = gridpp.neighbourhood_search(temp, laf, 1, 0.7, 1, 0.1, apply_array)
+print(tFinal.shape)
 
 #gridpp.simple_gradient(grid, points, input, -0.0065)
 
 t_diff = tFinal - temp 
-
-
-for i, value in enumerate(values):
-    values[i] = value - 273.15
 """
 for i in range(len(ids)):
     print(str(i) + ': ' + str(format(ids[i], '05d'))  + ' \t ' +  str(format(lats[i], '0.5f')) + '\t ' +  str(format(lons[i], '03.5f')) + '\t ' +  str(np.round(values[i], 1)))
 """
-
-
-
-"""
-gridpp.get_nearest_neighbour(lats, lons)
-"""
-
-latlons_points = gridpp.Points(lats, lons)
-
-gridpp.nearest(all_vars, latlons_points, tFinal) #igrid, opoints
-
+raw = gridpp.nearest(igrid, opoints, temp)
+output = gridpp.nearest(igrid, opoints, tFinal)
+olat = gridpp.nearest(igrid, opoints, lat)
+olon = gridpp.nearest(igrid, opoints, lon)
+    
+print('tFinal' + '\t', 'raw', 'lat', 'lon', 'raw_temp', 'lat', 'lon')
+for i in range(len(output)):
+    if output[i] - raw[i] != 0:
+        if lats[i] < -33 and lats[i] > -35 and lons[i] < 20 and lons[i]  > 18:
+            print('-------------')
+        print(i), print('{:.1f}'.format(output[i]), '{:.1f}'.format(raw[i]), '{:.1f}'.format(output[i] - raw[i]), olat[i], olon[i], "{:.1f}".format(values[i]), lats[i], lons[i])
+        if lats[i] < -33 and lats[i] > -35 and lons[i] < 20 and lons[i]  > 18:
+            print('-------------')
 fig, ax = plt.subplots(figsize= (5,5))
 
 s = ax.scatter(lons, lats, c = values, cmap= 'RdBu_r', vmin = -30, vmax = 30, s = 5)
@@ -158,7 +172,7 @@ s.set_clim([-30,30])
 cbar = fig.colorbar(s)
 plt.savefig('stations_new.png')
 plt.grid('on')
-plt.close()
+plt.close() 
 
 # Hele verden ppå et tidsserie,
 # Lag veriffil 
