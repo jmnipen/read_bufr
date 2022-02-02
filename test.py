@@ -162,18 +162,55 @@ for i in range(len(output)):
     if output[i] - raw[i] != 0:
         if lats[i] < -33 and lats[i] > -35 and lons[i] < 20 and lons[i]  > 18:
             print('-------------')
-        print(i), print('{:.1f}'.format(output[i]), '{:.1f}'.format(raw[i]), '{:.1f}'.format(output[i] - raw[i]), olat[i], olon[i], "{:.1f}".format(values[i]), lats[i], lons[i])
+        print(i, '{:.1f}'.format(output[i]), '{:.1f}'.format(raw[i]), '{:.1f}'.format(output[i] - raw[i]), olat[i], olon[i], "{:.1f}".format(values[i]), lats[i], lons[i])
         if lats[i] < -33 and lats[i] > -35 and lons[i] < 20 and lons[i]  > 18:
             print('-------------')
-fig, ax = plt.subplots(figsize= (5,5))
 
-s = ax.scatter(lons, lats, c = values, cmap= 'RdBu_r', vmin = -30, vmax = 30, s = 5)
+fig, (ax1, ax2, ax3) = plt.subplots(figsize= (15,5), nrows= 1, ncols = 3)
+s1 = ax1.scatter(lons, lats, c = values, cmap= 'RdBu_r', vmin = -30, vmax = 30, s = 5)
+s1.set_clim([-30,30])
+#cbar1 = fig.colorbar(s1)
+ax1.set_title('observations')
+ax1.grid('on')
+
+#fig, ax = plt.subplots(figsize = (5,5))
+s2 = ax2.scatter(olon, olat, c = output, cmap = 'RdBu_r', vmin = -30, vmax = 30, s= 5)
+s2.set_clim([-30,30])
+#cbar2 = fig.colorbar(s2)
+ax2.set_title('Post process')
+ax2.grid('on')
+
+#fig, ax = plt.subplots(figsize = (5,5))
+s3 = ax3.scatter(olon, olat, c = output, cmap = 'RdBu_r', vmin = -30, vmax = 30, s= 5)
+s3.set_clim([-30,30])
+#cbar3 = fig.colorbar(s3)
+ax3.set_title('raw')
+ax3.grid('on')
+
+plt.savefig('stations.png')
+plt.close()
+
+fig, ax = plt.subplots(figsize = (5,5))
+s = ax.scatter(lons, lats, c = abs(output - values), cmap = 'RdBu_r', s = 5, vmin = 0, vmax = 3)
+#cbar = fig.colorbar(s, ax = ax, fraction = 0.046, pad = 0.04)
+ax.set_title('MAE')
+ax.grid('on')
+plt.gca().set_aspect(1)
+plt.savefig('MAE.png')
+plt.close()
+
+
+fig, ax = plt.subplots(figsize = (5,5))
+s = ax.scatter(lons, lats, c = output, vmin = -30, vmax = 30, cmap = 'RdBu_r', s = 5)
 s.set_clim([-30,30])
-cbar = fig.colorbar(s)
-plt.savefig('stations_new.png')
-plt.grid('on')
-plt.close() 
+ax.set_title('Global Observations')
+ax.grid('on')
+#cbar = fig.colorbar(s, ax = ax, fraction = 0.046, pad = 0.04)
+plt.gca().set_aspect(1)
+plt.savefig('GLobal.png')
+plt.close()
+
 
 # Hele verden ppå et tidsserie,
-# Lag veriffil 
+# Lag veriffil
 # MAE, obsfcst
